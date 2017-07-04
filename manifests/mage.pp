@@ -54,14 +54,6 @@ package { [
 }
 
 package { [
-  'mysql-common',
-  'mysql-server'
-]:
-  ensure  => 'latest',
-  require => Package['apache2'],
-}
-
-package { [
   'php5-cli',
   'php5-common',
   'php5-curl',
@@ -77,7 +69,6 @@ package { [
   'php-codesniffer',
 ]:
   ensure  => 'latest',
-  require => Package['mysql-common']
 }
 
 package { [
@@ -91,19 +82,6 @@ package { [
 # executables #
 ###############
 
-exec { 'set-mysql-password':
-  unless  => '/usr/bin/mysqladmin -uroot -pmage2 status',
-  command => '/usr/bin/mysqladmin -uroot password mage2',
-  require => Service['mysql'],
-  notify  => Exec['remove-local-xml'],
-}
-
-exec { 'create-mage-db':
-  unless  => '/usr/bin/mysql -uroot -pmage2 -e "use mage2"',
-  command => '/usr/bin/mysql -uroot -pmage2 -e "create database mage2; grant all on mage2.* to root@localhost identified by \'mage2\';"',
-  require => Exec['set-mysql-password'],
-}
-
 exec { 'reload-apache2':
   command     => '/etc/init.d/apache2 reload',
   refreshonly => true
@@ -112,13 +90,6 @@ exec { 'reload-apache2':
 exec { 'reload-php5-fpm':
   command     => '/etc/init.d/php5-fpm reload',
   refreshonly => true
-}
-
-exec { 'remove-local-xml':
-  command     => '/bin/rm /vagrant/data/magento2/app/etc/local.xml',
-  require     => Exec['create-mage-db'],
-  onlyif      => "/usr/bin/test -f /vagrant/data/magento2/app/etc/local.xml",
-  refreshonly => true,
 }
 
 ############
@@ -130,13 +101,6 @@ service { 'apache2':
   hasstatus  => true,
   hasrestart => true,
   require    => Package['apache2'],
-}
-
-service { 'mysql':
-  ensure  => running,
-  enable  => true,
-  require => Package['mysql-server'],
-  notify  => Exec['create-mage-db']
 }
 
 service { 'php5-fpm':
@@ -208,33 +172,6 @@ file { '/etc/php5/fpm/conf.d/21-xdebug.ini':
 file { '/etc/php5/cli/conf.d/21-xdebug.ini':
   source  => '/vagrant/files/xdebug.ini',
   require => Package['php5-cli', 'php5-xdebug']
-}
-
-##################
-# helper scripts #
-##################
-
-file { '/home/vagrant/bin':
-  ensure => 'directory',
-  owner  => 'vagrant',
-  group  => 'vagrant',
-  mode   => 0775
-}
-
-file { '/home/vagrant/bin/reinstall':
-  owner    => 'vagrant',
-  group    => 'vagrant',
-  source   => '/vagrant/files/reinstall.sh',
-  mode     => '0755',
-  require  => File['/home/vagrant/bin']
-}
-
-file { '/home/vagrant/.bash_aliases':
-  owner    => 'vagrant',
-  group    => 'vagrant',
-  source   => '/vagrant/files/bash_aliases',
-  mode     => '0755',
-  require  => File['/home/vagrant/bin']
 }
 
 #########
